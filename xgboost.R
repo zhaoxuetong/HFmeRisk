@@ -5,7 +5,7 @@ library(caret)
 
 #dmp lasso xgboost
 {
-  setwd("E:\\zhaoxt_workplace\\mywork\\1慢性复杂疾病\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary")
+  setwd("E:\\workplace\\mywork\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary")
   id <- read.table("lasso_dmp_little.csv")
   load("UMN_DMP_new.Rdata")
   head(id)
@@ -17,7 +17,7 @@ library(caret)
   y <- as.factor(UMN_DMP_new$chf)
   
   set.seed(1234)
-  samp=sample(1:nrow(X),round(nrow(X)/6))	# 从全部数据集中抽取样本作为训练集,剩下的作为训练集
+  samp=sample(1:nrow(X),round(nrow(X)/6))	
   X_test=X[samp,]
   y_test=y[samp]
   X=X[-samp,]
