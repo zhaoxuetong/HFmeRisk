@@ -59,3 +59,4 @@ data_cpg = filter(HFpEF,PACKS_SET == "UMN")
   write.table(myDMR_Bumphunter$BumphunterDMR,file="myDMR_Bumphunter.txt",sep = "\t",quote = F,row.names = T)
   write.table(myDMR_DMRcate$DMRcateDMR,file="myDMR_DMRcate.txt",sep = "\t",quote = F,row.names = T)
 }
+ 
