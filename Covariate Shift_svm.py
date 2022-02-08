@@ -27,15 +27,15 @@ test = pd.read_csv(TEST_FILE)
 cols = [c for c in train.columns if c not in ['ID','target']]#'Diuretic',"Age","BMI","Gender","Heartfailure"
 x_train = train[cols]
 x_test = test[cols]
-x_train['target']=0# 开始给训练集和测试集打上标签
+x_train['target']=0
 x_test['target']= 1
-data=pd.concat([x_train,x_test],axis=0)#将训练集和测试集合并
-train_label=data['target']#取出train_label,方便后面巡礼N
+data=pd.concat([x_train,x_test],axis=0)
+train_label=data['target']
 data.drop(['target'],axis=1,inplace=True)
 train_data=data
 
 #kf=StratifiedKFold(n_splits=6,shuffle=True,random_state=123)
-x,y=pd.DataFrame(train_data),pd.DataFrame(train_label)  #将数据dataframe化，后面进行iloc 等选项
+x,y=pd.DataFrame(train_data),pd.DataFrame(train_label)  
 
 _get = lambda x,l:[x[i] for i in l]
 random.seed( 1000 )
@@ -62,7 +62,7 @@ for i, (train_idx, valid_idx) in enumerate(folds):
     random.seed( 1000 )
     pre = (np.array(y_train_meta[valid_idx,0]) >= threshold) * 1
     print(matthews_corrcoef(np.array(y_valid_)[:,0], pre))
-    #对测试集进行操作
+    
 random.seed( 1000 )
 fpr, tpr, thresholds = roc_curve(y, y_train_meta)
 random.seed( 1000 )
@@ -88,7 +88,7 @@ plt.title('Covariate Shift: Receiver operating characteristic',fontdict={'family
 plt.legend(loc=4,fontsize = "x-small",prop={'family':'Times New Roman','size':8})
 plt.savefig("D:\\anaconda-python\\UMN_JHU_alldata\\trainUMN_testJHU\\new_result\\deepfm\\output\\new_1126\\0827Covariate Shift_SVMmodel.pdf")
 
-#对训练集和测试集做的
+
 from scipy import stats
 for i in range(train.shape[1]):
     print(cols[i],stats.ks_2samp(train.values[:,i], test.values[:,i]))
