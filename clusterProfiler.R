@@ -317,11 +317,11 @@ write.table(venn_CpG,"venn_probe.csv",sep=",")
 }
 #4.enrichDO
 {
-  x <- enrichDO(gene          = bit_gene( df0[,1]), # 差异分析得到的基因
+  x <- enrichDO(gene          = bit_gene( df0[,1]), 
                 ont           = "DO",
                 pvalueCutoff  = 0.5,
                 pAdjustMethod = "BH",
-                universe      = x@universe,#全部基因 ,come from 3
+                universe      = x@universe,
                 minGSSize     = 5,
                 maxGSSize     = 500,
                 qvalueCutoff  = 0.5,
