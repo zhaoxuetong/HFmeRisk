@@ -2,7 +2,7 @@
 
 #DMP+clin lasso+xgboost
   {
-    setwd("E:/zhaoxt_workplace/mywork/1慢性复杂疾病/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/1123_dataSummary/")
+    setwd("E:/workplace/mywork/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/1123_dataSummary/")
     load("train_data.Rdata")
     id3 <- read.table("xgblasso_DMP.csv",sep=",",header = T)
     head(id3)
@@ -77,7 +77,7 @@
 }
 #50%,75%,25%,60%
 {
-  setwd("E:/zhaoxt_workplace/mywork/1慢性复杂疾病/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/DMP_pipeline")
+  setwd("E:/workplace/mywork/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/DMP_pipeline")
   load("UMN_DMP_new.Rdata")
   id3 <- read.table("xgblasso_DMP.csv",sep=",",header = T)
   head(id3)
@@ -173,7 +173,7 @@
   X = X[samp,]
   pdata <- data.frame(X$target)
   pdata$ID <- X$ID
-  write.table(pdata,"D:\\anaconda-python\\learn_DL\\Basic-DeepFM-model\\data\\20201126deepfm_pdata_JHU_6years.txt",row.names = F)#为剔除样本做准备
+  write.table(pdata,"D:\\anaconda-python\\learn_DL\\Basic-DeepFM-model\\data\\20201126deepfm_pdata_JHU_6years.txt",row.names = F)
   X <- X[,-2]
   write.csv(X,"D:\\anaconda-python\\learn_DL\\Basic-DeepFM-model\\data\\20201126deepfm_feature_dmp_lassoxgboost_6years_test.csv",row.names = F)
   #================
@@ -190,7 +190,7 @@
   X = X[samp,]
   pdata <- data.frame(X$target)
   pdata$ID <- X$ID
-  write.table(pdata,"D:\\anaconda-python\\learn_DL\\Basic-DeepFM-model\\data\\20201126deepfm_pdata_JHU_4years.txt",row.names = F)#为剔除样本做准备
+  write.table(pdata,"D:\\anaconda-python\\learn_DL\\Basic-DeepFM-model\\data\\20201126deepfm_pdata_JHU_4years.txt",row.names = F)
   X <- X[,-2]
   write.csv(X,"D:\\anaconda-python\\learn_DL\\Basic-DeepFM-model\\data\\20201126deepfm_feature_dmp_lassoxgboost_4years_test.csv",row.names = F)
   
@@ -198,7 +198,7 @@
 #FHS model : test data
 {
   library("readxl")
-  setwd("E:/zhaoxt_workplace/mywork/1慢性复杂疾病/methy/dbgap/3_clin")
+  setwd("E:/workplace/mywork/methy/dbgap/3_clin")
   echo1 <- read_excel("phs000007.v30.pht002572.v6.p11.c1.t_echo_2008_m_0549s.HMB-IRB-MDS.xlsx",sheet=1, na = "", skip = 10)
   echo1 <- data.frame(echo1)
   setwd("H:/dbgap_CHD/RootStudyConsentSet_phs000007.Framingham.v30.p11.c2.HMB-IRB-NPU-MDS/PhenotypeFiles")
