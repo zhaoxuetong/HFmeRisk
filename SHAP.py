@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 import matplotlib.pylab as pl
-# model是在第1节中训练的模型
+
 
 X_train = pd.read_csv("D:\\anaconda-python\\learn_DL\\Basic-DeepFM-model\\data/20201126deepfm_feature_dmp_lassoxgboost.csv")
 cols = [c for c in X_train.columns if c not in ['ID','target']]
@@ -37,7 +37,7 @@ player_explainer = pd.DataFrame()
 player_explainer['feature'] = X_train.columns
 player_explainer['feature_value'] = X_train[X_train.columns].iloc[j].values
 player_explainer['shap_value'] = shap_values[j]
-player_explainer #第一列是特征名称，第二列是特征的数值，第三列是各个特征在该样本中对应的SHAP值
+player_explainer 
 
 print('y_base + sum_of_shap_values: %.2f'%(y_base + player_explainer['shap_value'].sum()))
 #print('y_pred: %.2f'%(X_train['pred'].iloc[j]))
@@ -54,7 +54,7 @@ SUB_DIR = "D:\\anaconda-python\\UMN_JHU_alldata\\trainUMN_testJHU\\new_result\\d
 model_name = "shap"
 plt.savefig("%s/plot_%s.pdf"%(SUB_DIR,model_name))
 plt.close()
-shap.summary_plot(shap_values, X_train[X_train.columns],plot_type="bar") #把一个特征对目标变量影响程度的绝对值的均值作为这个特征的重要性
+shap.summary_plot(shap_values, X_train[X_train.columns],plot_type="bar") 
 
 #'Sulfonamides', 'AGE8', 'BMI8', 'CREAT8', 'Albumin_urine', 'cg00522231',
 #       'cg05845376', 'cg07041999', 'cg17766026', 'cg24205914', 'cg08101977',
