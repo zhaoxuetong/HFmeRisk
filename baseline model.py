@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Sep  9 10:22:39 2019
-这里是之前的版本，跑了19个模型，使用检验显著的临床数据加上从beta里面得到的10000+显著的甲基化位点，发现xgboost模型得到的24个特征在deepFM模型中表现最好
-结果保存在deepfm_and_other_test3里面，这里多加上了meanROC，stdROC
 @author: zhaoxt
 """
 # In[*]
