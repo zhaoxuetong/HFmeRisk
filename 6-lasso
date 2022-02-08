@@ -1,0 +1,383 @@
+rm(list=ls())
+
+library(tibble)
+library(dplyr)
+library(glmnet)
+library(lars) 
+library(VennDiagram)
+library(sigFeature)
+library(e1071)
+library(caret)
+library(randomForest)
+library(ltm)
+
+#UMN_DMP_new：dmp lasso
+{
+  setwd("E:\\zhaoxt_workplace\\mywork\\1慢性复杂疾病\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary")
+  load("UMN_DMP_new.Rdata")
+  X <- as.matrix(UMN_DMP_new[,!colnames(UMN_DMP_new) %in% c("chf","cvd")]) #chf
+  y <- as.character(UMN_DMP_new$chf)
+  set.seed(2)
+  fitCV <- cv.glmnet(X, y, family = "binomial", type.measure = "auc", nfolds = 10)
+  #lambda.min
+  myCoefs <- coef(fitCV, s = "lambda.min")
+  lasso_fea <- myCoefs@Dimnames[[1]][which(myCoefs[,1] != 0 )]
+  lasso_fea <- data.frame(lasso_fea)
+  lasso_fea$x <- myCoefs@x 
+  lasso_fea <- lasso_fea[-1,]
+  length(lasso_fea[,1])#103
+  
+  #lambda.1se
+  myCoefs2 <- coef(fitCV, s="lambda.1se")
+  #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+  lasso_fea2 <- myCoefs2@Dimnames[[1]][which(myCoefs2[,1] != 0 )]
+  lasso_fea2 <- data.frame(lasso_fea2)
+  lasso_fea2$x <- myCoefs2@x 
+  lasso_fea2 <- lasso_fea2[-1,]
+  length(lasso_fea2[,1])#91
+  
+  set.seed(2)
+  cv_fit <- cv.glmnet(X, y, nfold=10, alpha = 1, family = "binomial", type.measure = "class")
+  myCoefs3 <- coef(cv_fit, s="lambda.min")
+  #lambda.min是指在所有的λ值中，得到最小目标参量均值的那一个
+  lasso_fea3 <- myCoefs3@Dimnames[[1]][which(myCoefs3[,1] != 0 )]
+  lasso_fea3 <- data.frame(lasso_fea3)
+  lasso_fea3$x <- myCoefs3@x 
+  lasso_fea3 <- lasso_fea3[-1,]
+  length(lasso_fea3[,1])#104
+  
+  #2
+  myCoefs4 <- coef(cv_fit, s="lambda.1se")
+  #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+  lasso_fea4 <- myCoefs4@Dimnames[[1]][which(myCoefs4[,1] != 0 )]
+  lasso_fea4 <- data.frame(lasso_fea4)
+  lasso_fea4$x <- myCoefs4@x 
+  lasso_fea4 <- lasso_fea4[-1,]
+  length(lasso_fea4[,1])#92
+  
+  require("VennDiagram")
+  #VENN.LIST=list(lasso2_lambda1se=lasso_fea4$lasso_fea4,lasso2_lambdamin=lasso_fea3$lasso_fea3,lasso1_lambda1se=lasso_fea2$lasso_fea2,lasso1_lambdamin=lasso_fea$lasso_fea)
+  VENN.LIST=list(B_lambda1se=lasso_fea4$lasso_fea4,B_lambdamin=lasso_fea3$lasso_fea3,A_lambda1se=lasso_fea2$lasso_fea2,A_lambdamin=lasso_fea$lasso_fea)
+  venn.plot <- venn.diagram(VENN.LIST , NULL, 
+                            fill=c("darkmagenta", "darkblue","red","black"), 
+                            alpha=c(0.5,0.5,0.5,0.5), cex = 2, 
+                            cat.fontface="plain", cat.cex = 1.5, 
+                            main="Overlap of measure in 1se and min ")
+  grid.draw(venn.plot) 
+  venn4=intersect(intersect(intersect(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+  venn3=union(union(union(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+  setwd("E:\\zhaoxt_workplace\\mywork\\1慢性复杂疾病\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary")
+  write.csv(venn4,'lasso_dmp_little.csv', row.names = F)
+  write.csv(venn3,'lasso_dmp_large.csv', row.names = F)
+  {
+    library(UpSetR)
+    B_lambda1se=lasso_fea4$lasso_fea4
+    B_lambdamin=lasso_fea3$lasso_fea3
+    A_lambda1se=lasso_fea2$lasso_fea2
+    A_lambdamin=lasso_fea$lasso_fea
+    input <- fromList(list(A_lambdamin=lasso_fea$lasso_fea, 
+                           A_lambda1se=lasso_fea2$lasso_fea2,
+                           B_lambdamin=lasso_fea3$lasso_fea3,
+                           B_lambda1se=lasso_fea4$lasso_fea4))
+    upset(input, order.by = "freq",nsets = 7,point.size = 3) 
+  }
+}
+
+
+
+#lasso-only cpg
+{
+  setwd("E:/zhaoxt_workplace/mywork/1慢性复杂疾病/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/")
+  load(file="UMN_meta_new.Rdata")
+  
+  #load(file="meta_cpg0_scale.Rdata")
+  #meta_cpg0 <- meta_cpg0_scale
+  
+  
+  X <- as.matrix(UMN_meta_new[,-c(1:33)]) #id chf cvd
+  y <- as.character(UMN_meta_new$chf)
+  
+  set.seed(2)
+  fitCV <- cv.glmnet(X, y, family = "binomial", type.measure = "auc", nfolds = 10)
+  plot(fitCV)
+  #lambda.min
+  myCoefs <- coef(fitCV, s = "lambda.min")
+  lasso_fea <- myCoefs@Dimnames[[1]][which(myCoefs[,1] != 0 )]
+  lasso_fea <- data.frame(lasso_fea)
+  lasso_fea$x <- myCoefs@x 
+  lasso_fea <- lasso_fea[-1,]
+  length(lasso_fea[,1])#123
+  
+  #lambda.1se
+  myCoefs2 <- coef(fitCV, s="lambda.1se")
+  #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+  lasso_fea2 <- myCoefs2@Dimnames[[1]][which(myCoefs2[,1] != 0 )]
+  lasso_fea2 <- data.frame(lasso_fea2)
+  lasso_fea2$x <- myCoefs2@x 
+  lasso_fea2 <- lasso_fea2[-1,]
+  length(lasso_fea2[,1])#39
+  
+  
+  #venn
+  require("VennDiagram")
+  venn=intersect(lasso_fea2$lasso_fea2,lasso_fea$lasso_fea)
+  
+  
+  ############################################
+  cv_fit <- cv.glmnet(X, y, nfold=10, alpha = 1, family = "binomial", type.measure = "class")
+  plot(cv_fit)
+  
+  #1
+  myCoefs3 <- coef(cv_fit, s="lambda.min")
+  #lambda.min是指在所有的λ值中，得到最小目标参量均值的那一个
+  lasso_fea3 <- myCoefs3@Dimnames[[1]][which(myCoefs3[,1] != 0 )]
+  lasso_fea3 <- data.frame(lasso_fea3)
+  lasso_fea3$x <- myCoefs3@x 
+  lasso_fea3 <- lasso_fea3[-1,]
+  length(lasso_fea3[,1])
+  
+  #2
+  myCoefs4 <- coef(cv_fit, s="lambda.1se")
+  #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+  lasso_fea4 <- myCoefs4@Dimnames[[1]][which(myCoefs4[,1] != 0 )]
+  lasso_fea4 <- data.frame(lasso_fea4)
+  lasso_fea4$x <- myCoefs4@x 
+  lasso_fea4 <- lasso_fea4[-1,]
+  length(lasso_fea4[,1])
+  #venn
+  require("VennDiagram")
+  venn1=intersect(lasso_fea3$lasso_fea3,lasso_fea4$lasso_fea4)
+  
+  require("VennDiagram")
+  venn2=intersect(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3)
+  venn3=union(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3)
+  
+  #venn
+  {
+    require("VennDiagram")
+    VENN.LIST=list(d=lasso_fea4$lasso_fea4,c=lasso_fea3$lasso_fea3,b=lasso_fea2$lasso_fea2,a=lasso_fea$lasso_fea)
+    venn.plot <- venn.diagram(VENN.LIST , NULL, 
+                              fill=c("darkmagenta", "darkblue","red","black"), 
+                              alpha=c(0.5,0.5,0.5,0.5), cex = 2, 
+                              cat.fontface=4,  
+                              main="overlap of lasso1 and lasso2")
+    grid.draw(venn.plot) 
+    
+    venn4=union(union(union(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+    setwd("E:/zhaoxt_workplace/mywork/1慢性复杂疾病/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/")
+    write.csv(venn,'lasso_feature_selection_cpg.csv', row.names = F)
+    #write.csv(venn4,'lasso_feature_selection_scale.csv', row.names = F)
+  }
+}
+#lasso-only ehr
+{
+  setwd("E:/zhaoxt_workplace/mywork/1慢性复杂疾病/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/")
+  load(file="UMN_meta_new.Rdata")
+  
+  #load(file="meta_cpg0_scale.Rdata")
+  #meta_cpg0 <- meta_cpg0_scale
+  
+  X <- as.matrix(UMN_meta_new[,c(2:16,18:36)])
+  #X <- as.matrix(UMN_meta_new[,-c(1:33)]) #id chf cvd
+  y <- as.character(UMN_meta_new$chf)
+  set.seed(2)
+  fitCV <- cv.glmnet(X, y, family = "binomial", type.measure = "auc", nfolds = 10)
+  plot(fitCV)
+  #lambda.min
+  myCoefs <- coef(fitCV, s = "lambda.min")
+  lasso_fea <- myCoefs@Dimnames[[1]][which(myCoefs[,1] != 0 )]
+  lasso_fea <- data.frame(lasso_fea)
+  lasso_fea$x <- myCoefs@x 
+  lasso_fea <- lasso_fea[-1,]
+  length(lasso_fea[,1])#123
+  
+  #lambda.1se
+  myCoefs2 <- coef(fitCV, s="lambda.1se")
+  #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+  lasso_fea2 <- myCoefs2@Dimnames[[1]][which(myCoefs2[,1] != 0 )]
+  lasso_fea2 <- data.frame(lasso_fea2)
+  lasso_fea2$x <- myCoefs2@x 
+  lasso_fea2 <- lasso_fea2[-1,]
+  length(lasso_fea2[,1])#39
+  
+  
+  #venn
+  require("VennDiagram")
+  venn=intersect(lasso_fea2$lasso_fea2,lasso_fea$lasso_fea)
+  
+  
+  ############################################
+  cv_fit <- cv.glmnet(X, y, nfold=10, alpha = 1, family = "binomial", type.measure = "class")
+  plot(cv_fit)
+  
+  #1
+  myCoefs3 <- coef(cv_fit, s="lambda.min")
+  #lambda.min是指在所有的λ值中，得到最小目标参量均值的那一个
+  lasso_fea3 <- myCoefs3@Dimnames[[1]][which(myCoefs3[,1] != 0 )]
+  lasso_fea3 <- data.frame(lasso_fea3)
+  lasso_fea3$x <- myCoefs3@x 
+  lasso_fea3 <- lasso_fea3[-1,]
+  length(lasso_fea3[,1])
+  
+  #2
+  myCoefs4 <- coef(cv_fit, s="lambda.1se")
+  #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+  lasso_fea4 <- myCoefs4@Dimnames[[1]][which(myCoefs4[,1] != 0 )]
+  lasso_fea4 <- data.frame(lasso_fea4)
+  lasso_fea4$x <- myCoefs4@x 
+  lasso_fea4 <- lasso_fea4[-1,]
+  length(lasso_fea4[,1])
+  #venn
+  require("VennDiagram")
+  venn1=intersect(lasso_fea3$lasso_fea3,lasso_fea4$lasso_fea4)
+  
+  require("VennDiagram")
+  venn2=intersect(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3)
+  venn3=union(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3)
+  
+  #venn
+  {
+    require("VennDiagram")
+    VENN.LIST=list(d=lasso_fea4$lasso_fea4,c=lasso_fea3$lasso_fea3,b=lasso_fea2$lasso_fea2,a=lasso_fea$lasso_fea)
+    venn.plot <- venn.diagram(VENN.LIST , NULL, 
+                              fill=c("darkmagenta", "darkblue","red","black"), 
+                              alpha=c(0.5,0.5,0.5,0.5), cex = 2, 
+                              cat.fontface=4,  
+                              main="overlap of lasso1 and lasso2")
+    grid.draw(venn.plot) 
+    
+    venn4=union(union(union(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+    setwd("E:/zhaoxt_workplace/mywork/1慢性复杂疾病/methy/dbgap/chf/data_chf_contr/early_chf/c1_UMN_JHU/train_UMN_tset_JHU/")
+    write.csv(venn,'lasso_feature_selection_ehr.csv', row.names = F)
+    #write.csv(venn4,'lasso_feature_selection_scale.csv', row.names = F)
+  }
+}
+
+#overlap cpg and valid EHR
+{
+  setwd("E:\\zhaoxt_workplace\\mywork\\1慢性复杂疾病\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary/new_champ/")
+  names = c(1:7)
+  for(name in names){
+    load(paste0("train_data_",name,".Rdata"))
+    X <- as.matrix(train_data[,!colnames(train_data) %in% "Heart.failure"]) #chf
+    y <- as.character(train_data$Heart.failure)
+    set.seed(2)
+    fitCV <- cv.glmnet(X, y, family = "binomial", type.measure = "auc", nfolds = 10)
+    plot(fitCV)
+    #lambda.min
+    myCoefs <- coef(fitCV, s = "lambda.min")
+    lasso_fea <- myCoefs@Dimnames[[1]][which(myCoefs[,1] != 0 )]
+    lasso_fea <- data.frame(lasso_fea)
+    lasso_fea$x <- myCoefs@x 
+    lasso_fea <- lasso_fea[-1,]
+    length(lasso_fea[,1])#103
+    
+    #lambda.1se
+    myCoefs2 <- coef(fitCV, s="lambda.1se")
+    #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+    lasso_fea2 <- myCoefs2@Dimnames[[1]][which(myCoefs2[,1] != 0 )]
+    lasso_fea2 <- data.frame(lasso_fea2)
+    lasso_fea2$x <- myCoefs2@x 
+    lasso_fea2 <- lasso_fea2[-1,]
+    length(lasso_fea2[,1])#91
+    
+    set.seed(2)
+    cv_fit <- cv.glmnet(X, y, alpha = 1, family = "binomial", type.measure = "class")
+    plot(cv_fit)
+    myCoefs3 <- coef(cv_fit, s="lambda.min")
+    #lambda.min是指在所有的λ值中，得到最小目标参量均值的那一个
+    lasso_fea3 <- myCoefs3@Dimnames[[1]][which(myCoefs3[,1] != 0 )]
+    lasso_fea3 <- data.frame(lasso_fea3)
+    lasso_fea3$x <- myCoefs3@x 
+    lasso_fea3 <- lasso_fea3[-1,]
+    length(lasso_fea3[,1])#104
+    
+    #2
+    myCoefs4 <- coef(cv_fit, s="lambda.1se")
+    #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+    lasso_fea4 <- myCoefs4@Dimnames[[1]][which(myCoefs4[,1] != 0 )]
+    lasso_fea4 <- data.frame(lasso_fea4)
+    lasso_fea4$x <- myCoefs4@x 
+    lasso_fea4 <- lasso_fea4[-1,]
+    length(lasso_fea4[,1])#92
+    
+    require("VennDiagram")
+    #VENN.LIST=list(lasso2_lambda1se=lasso_fea4$lasso_fea4,lasso2_lambdamin=lasso_fea3$lasso_fea3,lasso1_lambda1se=lasso_fea2$lasso_fea2,lasso1_lambdamin=lasso_fea$lasso_fea)
+    VENN.LIST=list(B_lambda1se=lasso_fea4$lasso_fea4,B_lambdamin=lasso_fea3$lasso_fea3,A_lambda1se=lasso_fea2$lasso_fea2,A_lambdamin=lasso_fea$lasso_fea)
+    venn.plot <- venn.diagram(VENN.LIST , NULL, 
+                              fill=c("darkmagenta", "darkblue","red","black"), 
+                              alpha=c(0.5,0.5,0.5,0.5), cex = 2, 
+                              cat.fontface="plain", cat.cex = 1.5, 
+                              main="Overlap of measure in 1se and min ")
+    grid.draw(venn.plot) 
+    venn4=intersect(intersect(intersect(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+    venn3=union(union(union(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+    setwd("E:\\zhaoxt_workplace\\mywork\\1慢性复杂疾病\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary/new_champ/")
+    write.csv(venn4,paste0("lasso_little_data_",name,".csv"),row.names = F)
+    write.csv(venn3,paste0("lasso_large_data_",name,".csv"),row.names = F)
+  }
+}
+#overlap pair cpg and valid EHR
+{
+  setwd("E:\\zhaoxt_workplace\\mywork\\1慢性复杂疾病\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary/new_champ/")
+  names = c(1:3)
+  for(name in names){
+    load(paste0("train_data_pair",name,".Rdata"))
+    X <- as.matrix(train_data[,!colnames(train_data) %in% "Heart.failure"]) #chf
+    y <- as.character(train_data$Heart.failure)
+    set.seed(2)
+    fitCV <- cv.glmnet(X, y, family = "binomial", type.measure = "auc", nfolds = 10)
+    plot(fitCV)
+    #lambda.min
+    myCoefs <- coef(fitCV, s = "lambda.min")
+    lasso_fea <- myCoefs@Dimnames[[1]][which(myCoefs[,1] != 0 )]
+    lasso_fea <- data.frame(lasso_fea)
+    lasso_fea$x <- myCoefs@x 
+    lasso_fea <- lasso_fea[-1,]
+    length(lasso_fea[,1])#103
+    
+    #lambda.1se
+    myCoefs2 <- coef(fitCV, s="lambda.1se")
+    #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+    lasso_fea2 <- myCoefs2@Dimnames[[1]][which(myCoefs2[,1] != 0 )]
+    lasso_fea2 <- data.frame(lasso_fea2)
+    lasso_fea2$x <- myCoefs2@x 
+    lasso_fea2 <- lasso_fea2[-1,]
+    length(lasso_fea2[,1])#91
+    
+    set.seed(2)
+    cv_fit <- cv.glmnet(X, y, alpha = 1, family = "binomial", type.measure = "class")
+    plot(cv_fit)
+    myCoefs3 <- coef(cv_fit, s="lambda.min")
+    #lambda.min是指在所有的λ值中，得到最小目标参量均值的那一个
+    lasso_fea3 <- myCoefs3@Dimnames[[1]][which(myCoefs3[,1] != 0 )]
+    lasso_fea3 <- data.frame(lasso_fea3)
+    lasso_fea3$x <- myCoefs3@x 
+    lasso_fea3 <- lasso_fea3[-1,]
+    length(lasso_fea3[,1])#104
+    
+    #2
+    myCoefs4 <- coef(cv_fit, s="lambda.1se")
+    #lambda.1se是指在lambda.min一个方差范围內得到最简单模型的那一个λ值
+    lasso_fea4 <- myCoefs4@Dimnames[[1]][which(myCoefs4[,1] != 0 )]
+    lasso_fea4 <- data.frame(lasso_fea4)
+    lasso_fea4$x <- myCoefs4@x 
+    lasso_fea4 <- lasso_fea4[-1,]
+    length(lasso_fea4[,1])#92
+    
+    require("VennDiagram")
+    #VENN.LIST=list(lasso2_lambda1se=lasso_fea4$lasso_fea4,lasso2_lambdamin=lasso_fea3$lasso_fea3,lasso1_lambda1se=lasso_fea2$lasso_fea2,lasso1_lambdamin=lasso_fea$lasso_fea)
+    VENN.LIST=list(B_lambda1se=lasso_fea4$lasso_fea4,B_lambdamin=lasso_fea3$lasso_fea3,A_lambda1se=lasso_fea2$lasso_fea2,A_lambdamin=lasso_fea$lasso_fea)
+    venn.plot <- venn.diagram(VENN.LIST , NULL, 
+                              fill=c("darkmagenta", "darkblue","red","black"), 
+                              alpha=c(0.5,0.5,0.5,0.5), cex = 2, 
+                              cat.fontface="plain", cat.cex = 1.5, 
+                              main="Overlap of measure in 1se and min ")
+    grid.draw(venn.plot) 
+    venn4=intersect(intersect(intersect(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+    venn3=union(union(union(lasso_fea$lasso_fea,lasso_fea3$lasso_fea3),lasso_fea4$lasso_fea4),lasso_fea2$lasso_fea2)
+    setwd("E:\\zhaoxt_workplace\\mywork\\1慢性复杂疾病\\methy\\dbgap\\chf\\data_chf_contr\\early_chf\\c1_UMN_JHU\\train_UMN_tset_JHU/1123_dataSummary/new_champ/")
+    write.csv(venn4,paste0("lasso_little_data_pair",name,".csv"),row.names = F)
+    write.csv(venn3,paste0("lasso_large_data_pair",name,".csv"),row.names = F)
+  }
+}
